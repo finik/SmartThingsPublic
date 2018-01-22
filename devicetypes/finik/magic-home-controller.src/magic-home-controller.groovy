@@ -68,9 +68,20 @@ def parse(description) {
             def green = json.data.green * 100 / getLevel()
             def blue = json.data.blue * 100 / getLevel()
             events << createEvent(name: "color", value: rgbToHex(red, green, blue))
+            events << createEvent(name: "red", value: red as Integer)
+            events << createEvent(name: "green", value: green as Integer)
+            events << createEvent(name: "blue", value: blue as Integer)
+            
+            def hs = RGB2HS(red, green, blue)
+            events << createEvent(name: "hue", value: hs.hue as Integer)
+    		events << createEvent(name: "saturation", value: hs.saturation as Integer)
+
     	} else if (json.cmd == 'color') {
         	log.debug "Color command success"
-            events << createEvent(name: "color", value: rgbToHex(getRed(), getGreen(), getBlue()))
+        }
+        
+        if (json.cmd != 'state') {
+        	events << getAction("/state")
         }
     }
     
@@ -84,13 +95,11 @@ def refresh() {
 
 def on() {
 	log.debug "on()"
-	sendEvent(name: "switch", value: "on")
     getAction("/on")
 }
 
 def off() {
 	log.debug "off()"
-	sendEvent(name: "switch", value: "off")
     getAction("/off")
 }
 
@@ -108,8 +117,8 @@ private getAction(uri) {
 }
 
 
-private sendColorCommand() {
-	log.debug "sendColorCommand()"
+private sendColorCommand(r, g, b) {
+	log.debug "sendColorCommand(${r}, ${g}, ${b})"
 	def hosthex = convertIPtoHex(ip);
     def porthex = convertPortToHex(port);
     def target = "$hosthex:$porthex";
@@ -117,9 +126,9 @@ private sendColorCommand() {
     
     def level = getLevel()
     
-    def red = (getRed() * level / 100).toInteger()
-    def green = (getGreen() * level / 100).toInteger()
-    def blue = (getBlue() * level / 100).toInteger()
+    def red = (r * level / 100).toInteger()
+    def green = (g * level / 100).toInteger()
+    def blue = (b * level / 100).toInteger()
     
     log.debug "sendColorCommand setting RGB to [${red}, ${green}, ${blue}]"
     getAction("/color?r=${red}&g=${green}&b=${blue}")
@@ -129,7 +138,7 @@ def setLevel(value) {
 	log.debug "setLevel(${value})"
     sendEvent(name: "level", value: value)
     
-    sendColorCommand()
+    sendColorCommand(getRed(), getGreen(), getBlue())
 }
 
 def setColor(value) {
@@ -137,37 +146,25 @@ def setColor(value) {
     
     if ((value.red != null) && (value.green != null) && (value.blue != null)) {
     	// We got pure RGB, what else do we need?
-        // See if we need to update Hue/Sat
-        def hs = RGB2HS(value.red, value.green, value.blue)
-        value.hue = hs.hue
-        value.saturation = hs.saturation
-        
+        sendColorCommand(value.red, value.green, value.blue)
     } else if ((value.hue != null) && (value.saturation != null)) {
     	// No RGB, but we have Hue/Sat, lets calculate RGB
     	def rgb = HS2RGB(value.hue as Integer, value.saturation as Integer)
-        value.red = rgb[0]
-        value.green = rgb[1]
-        value.blue = rgb[2]
+        sendColorCommand(rgb[0], rgb[1], rgb[2])
+    } else if (value.hex != null) {
+    	def rgb = hexToRgb(value.hex)
+        sendColorCommand(rgb.r, rgb.g, rgb.b)
     }
-    
-	sendEvent(name: "red", value: value.red)
-    sendEvent(name: "green", value: value.green)
-    sendEvent(name: "blue", value: value.blue)
-    sendEvent(name: "hue", value: value.hue)
-    sendEvent(name: "saturation", value: value.saturation)
-    sendEvent(name: "color", value: rgbToHex(value.red, value.green, value.blue))
-    
-    sendColorCommand()
 }
 
 def setHue(value) {
 	log.debug "setHue(${value})"
-    sendEvent(name: "hue", value: value)
+    setColor([hue: value, saturation: getSat()])
 }
 
-def setSat(value) {
+def setSaturation(value) {
 	log.debug "setSat(${value})"
-    sendEvent(name: "sat", value: value)
+    setColor([hue: getHue(), saturation: value])
 }
 
 // handle commands
