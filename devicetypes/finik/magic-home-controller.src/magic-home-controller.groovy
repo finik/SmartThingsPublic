@@ -41,104 +41,49 @@ metadata {
         //details(["switch", "rgbSelector"])
 
     }
-    
-    preferences {
-        input("ip", "string", title:"Gateway IP Address", description: "Controller IP Address", required: true, displayDuringSetup: true)
-        input("port", "string", title:"Gateway Port", description: "Controller Port", required: true, displayDuringSetup: true)
-        input("id", "string", title:"Device unique ID", description: "Device unique ID", required: true, displayDuringSetup: true)
-        input(name:"CStyle", type:"enum", title: "Controller Style", options: ["RGBWW", "RGBW", "RGB+WW", "RGB"], description: "Enter Controller Style", required: true, displayDuringSetup: true)
-    }
 }
 
 def installed() {
 	log.debug "installed()"
 }
 
-def parse(description) {
-	def events = []
-	log.debug "parse(${description})"
-    def msg = parseLanMessage(description)
-    def json = msg.json
-    if (json.ok == true) {
-        if (json.cmd == 'state') {
-    		log.debug "Received state ${json.data}"
-            events << createEvent(name: "switch", value: json.data.power?"on":"off")
-            // Adjust by current level
-            def red = json.data.red * 100 / getLevel()
-            def green = json.data.green * 100 / getLevel()
-            def blue = json.data.blue * 100 / getLevel()
-            events << createEvent(name: "color", value: rgbToHex(red, green, blue))
-            events << createEvent(name: "red", value: red as Integer)
-            events << createEvent(name: "green", value: green as Integer)
-            events << createEvent(name: "blue", value: blue as Integer)
-            
-            def hs = RGB2HS(red, green, blue)
-            events << createEvent(name: "hue", value: hs.hue as Integer)
-    		events << createEvent(name: "saturation", value: hs.saturation as Integer)
-
-    	} else if (json.cmd == 'color') {
-        	log.debug "Color command success"
-        }
-        
-        if (json.cmd != 'state') {
-        	events << getAction("/state")
-        }
-    }
-    
-	return events
-}
-
 def refresh() {
 	log.debug "refresh()"
-    getAction("/state")
+    parent.childRefresh(device.deviceNetworkId)
 }
 
 def on() {
 	log.debug "on()"
-    getAction("/on")
+    parent.childOn(device.deviceNetworkId)
 }
 
 def off() {
 	log.debug "off()"
-    getAction("/off")
+    parent.childOff(device.deviceNetworkId)
 }
 
-private getAction(uri) {
-	log.debug "getAction(${uri})"
-    def iphex = convertIPtoHex(ip)
-    def porthex = convertPortToHex(port)
-    device.deviceNetworkId = "$iphex:$porthex"
-    log.debug "${device.deviceNetworkId}"
-    def hubAction = new physicalgraph.device.HubAction(
-        method: "GET",
-        path: "/${id}${uri}"
-    )
-    return hubAction 
-}
-
-
-private sendColorCommand(r, g, b) {
-	log.debug "sendColorCommand(${r}, ${g}, ${b})"
-	def hosthex = convertIPtoHex(ip);
-    def porthex = convertPortToHex(port);
-    def target = "$hosthex:$porthex";
-    device.deviceNetworkId = target;
-    
-    def level = getLevel()
-    
-    def red = (r * level / 100).toInteger()
-    def green = (g * level / 100).toInteger()
-    def blue = (b * level / 100).toInteger()
-    
-    log.debug "sendColorCommand setting RGB to [${red}, ${green}, ${blue}]"
-    getAction("/color?r=${red}&g=${green}&b=${blue}")
-}
 
 def setLevel(value) {
 	log.debug "setLevel(${value})"
     sendEvent(name: "level", value: value)
     
-    sendColorCommand(getRed(), getGreen(), getBlue())
+    return sendColorCommand(getRed(), getGreen(), getBlue())
+}
+
+private sendColorCommand(r, g, b) {
+	log.debug "sendColorCommand(${r}, ${g}, ${b})"
+    
+    def level = getLevel()
+    def ww = 0;
+    
+    def red = (r * level / 100).toInteger()
+    def green = (g * level / 100).toInteger()
+    def blue = (b * level / 100).toInteger()
+    
+    if ([r, g, b].min() > 250) ww = (255 * level / 100).toInteger();
+    
+    log.debug "sendColorCommand setting RGB to [${red}, ${green}, ${blue}]"
+    parent.childColor(device.deviceNetworkId, red, green, blue, ww)
 }
 
 def setColor(value) {
@@ -231,20 +176,6 @@ def getSwitch() {
 	valueNow
 }
 
-private getHostAddress() {
-	return "${ip}:${port}"
-}
-
-private String convertIPtoHex(ipAddress) { 
-    String hex = ipAddress.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()
-    return hex
-}
-
-private String convertPortToHex(port) {
-	String hexport = port.toString().format( '%04x', port.toInteger() )
-    return hexport
-}
-
 // Return hex-string interpretation of byte array
 public static String bytesToHex(byte[] bytes) {
   final char[] hexArray = "0123456789ABCDEF".toCharArray();
@@ -326,4 +257,28 @@ private RGB2HS(r, g, b) {
         while (h >= 1) h -= 1
     }
     return [ hue: h * 100, saturation: s * 100 ]
+}
+
+def handleResponse(json) {    
+    if (json.cmd == 'state') {
+        log.debug "Received state ${json.data}"
+        sendEvent(name: "switch", value: json.data.power?"on":"off")
+        // Adjust by current level
+        def red = json.data.red * 100 / getLevel()
+        def green = json.data.green * 100 / getLevel()
+        def blue = json.data.blue * 100 / getLevel()
+        sendEvent(name: "color", value: rgbToHex(red, green, blue))
+        sendEvent(name: "red", value: red as Integer)
+        sendEvent(name: "green", value: green as Integer)
+        sendEvent(name: "blue", value: blue as Integer)
+
+        def hs = RGB2HS(red, green, blue)
+        sendEvent(name: "hue", value: hs.hue as Integer)
+        sendEvent(name: "saturation", value: hs.saturation as Integer)
+
+    } else if (json.cmd == 'color') {
+        log.debug "Color command success!"
+    }
+    
+    return
 }
