@@ -87,19 +87,18 @@ def setLevel(level) {
 
 def refresh()
 {
-    log.debug "Refreshing.."
-    poll()
+    log.debug "refresh()"
+    parent.childStatus(device.deviceNetworkId)
 }
 
 def poll()
 {
-    log.debug "Polling.."
+    log.debug "poll()"
     parent.childStatus(device.deviceNetworkId)
-    runIn(180, refresh)
 }
 
 def updatestatus(level) {
-    log.debug "updatestatus(${level})"
+    log.debug "updatestatus(${device.displayName}, ${level})"
     if (level > 0) {
         sendEvent(name: "switch", value: "on")
     } else {
@@ -110,10 +109,10 @@ def updatestatus(level) {
 
 def ping()
 {
-    log.debug "Pinging.."
-    poll()
+    log.debug "ping()"
+    parent.childStatus(device.deviceNetworkId)
 }
 
 def initialize(){
-    poll()
+    runEvery5Minutes(poll)
 }
