@@ -2,6 +2,7 @@ metadata {
 	definition (name: "Magic Home Controller", namespace: "finik", author: "Dmitry Fink") {
 		capability "Switch Level"
 		capability "Actuator"
+        capability "Polling"
 		capability "Color Control"
 		capability "Switch"
 		capability "Refresh"
@@ -50,6 +51,22 @@ def installed() {
 def refresh() {
 	log.debug "refresh()"
     parent.childState(device.deviceNetworkId)
+}
+
+def poll()
+{
+    log.debug "poll()"
+    parent.childState(device.deviceNetworkId)
+}
+
+def ping()
+{
+    log.debug "ping()"
+    parent.childState(device.deviceNetworkId)
+}
+
+def initialize(){
+    runEvery5Minutes(poll)
 }
 
 def on() {
