@@ -46,67 +46,82 @@ def installed() {
 }
 
 def refresh() {
-	childRefresh("bedroom")
+
 }
 
-// handle commands
-def childRefresh(id) {
+// Status command
+void stateCallback(physicalgraph.device.HubResponse hubResponse) {
+    log.debug "stateCallback()"
+    def json = hubResponse.json
+    if (json != null) {
+
+        def children = getChildDevices()
+        def deviceId = json.id
+        
+        // Propagate the response to the right child
+        children.each { child ->
+            if (deviceId == child.deviceNetworkId) {
+                child.handleState(json.data)
+            }
+        }
+    }
+}
+
+def childState(id) {
 	log.debug "Executing 'refresh' on ${id}"
-	sendHubCommand(getAction(id, "state"))
+	sendHubCommand(getAction(id, "state", stateCallback ))
 }
 
-private getAction(id, uri) {
+private getAction(id, uri, callback = null) {
 	log.debug "getAction(${id}, ${uri})"
     def iphex = convertIPtoHex(ip)
     def porthex = convertPortToHex(port)
     device.deviceNetworkId = "$iphex:$porthex"
-    log.debug device.deviceNetworkId
     
-    def hubAction = new physicalgraph.device.HubAction(
+    def hubAction = new physicalgraph.device.HubAction([
         method: "GET",
         path: "/${id}/${uri}"
-    )
-    log.debug "${hubAction}"
+    ],
+    device.deviceNetworkId,
+    [
+    	callback: callback
+    ])
     return hubAction 
+}
+
+
+void commandCallback(physicalgraph.device.HubResponse hubResponse) {
+    log.debug "commandCallback()"
+    def json = hubResponse.json
+    if (json != null) {
+
+        def children = getChildDevices()
+        def deviceId = json.id
+        
+        // Trigger state retrieval
+        children.each { child ->
+            if (deviceId == child.deviceNetworkId) {
+                childState(deviceId)
+            }
+        }
+    }
 }
 
 def childOn(id) {
 	log.debug "Executing 'on' for ${id}"
-    sendHubCommand(getAction(id, "on"))
+    sendHubCommand(getAction(id, "on", commandCallback))
 }
 
 def childOff(id) {
 	log.debug "Executing 'off' for ${id}"
-    sendHubCommand(getAction(id, "off"))
+    sendHubCommand(getAction(id, "off", commandCallback))
 }
 
 def childColor(id, red, green, blue, ww) {
 	log.debug "childColor(${red}, ${green}, ${blue}, ${ww}) for ${id}"
-	sendHubCommand(getAction(id, "color?r=${red}&g=${green}&b=${blue}&ww=${ww}"))
+	sendHubCommand(getAction(id, "color?r=${red}&g=${green}&b=${blue}&ww=${ww}", commandCallback))
 }
 
-def parse(description) {
-	def events = []
-	log.debug "parse(${description})"
-    def msg = parseLanMessage(description)
-    def json = msg.json
-    if (json.ok == true) {
-    	def id = json.id
-        def children = getChildDevices()
-        // Propagate the response to the right child
-        children.each { child ->
-    		if (id == child.deviceNetworkId) {
-                child.handleResponse(json)
-            }
-		}
-        
-        if (json.cmd != 'state') {
-        	events << getAction(id, "state")
-        }
-    }
-    
-	return events
-}
 
 private String convertIPtoHex(ipAddress) { 
     String hex = ipAddress.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()

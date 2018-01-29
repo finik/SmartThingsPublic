@@ -49,7 +49,7 @@ def installed() {
 
 def refresh() {
 	log.debug "refresh()"
-    parent.childRefresh(device.deviceNetworkId)
+    parent.childState(device.deviceNetworkId)
 }
 
 def on() {
@@ -259,26 +259,22 @@ private RGB2HS(r, g, b) {
     return [ hue: h * 100, saturation: s * 100 ]
 }
 
-def handleResponse(json) {    
-    if (json.cmd == 'state') {
-        log.debug "Received state ${json.data}"
-        sendEvent(name: "switch", value: json.data.power?"on":"off")
-        // Adjust by current level
-        def red = json.data.red * 100 / getLevel()
-        def green = json.data.green * 100 / getLevel()
-        def blue = json.data.blue * 100 / getLevel()
-        sendEvent(name: "color", value: rgbToHex(red, green, blue))
-        sendEvent(name: "red", value: red as Integer)
-        sendEvent(name: "green", value: green as Integer)
-        sendEvent(name: "blue", value: blue as Integer)
+def handleState(state) {    
 
-        def hs = RGB2HS(red, green, blue)
-        sendEvent(name: "hue", value: hs.hue as Integer)
-        sendEvent(name: "saturation", value: hs.saturation as Integer)
+    log.debug "Received state ${state}"
+    sendEvent(name: "switch", value: state.power?"on":"off")
+    // Adjust by current level
+    def red = state.red * 100 / getLevel()
+    def green = state.green * 100 / getLevel()
+    def blue = state.blue * 100 / getLevel()
+    sendEvent(name: "color", value: rgbToHex(red, green, blue))
+    sendEvent(name: "red", value: red as Integer)
+    sendEvent(name: "green", value: green as Integer)
+    sendEvent(name: "blue", value: blue as Integer)
 
-    } else if (json.cmd == 'color') {
-        log.debug "Color command success!"
-    }
+    def hs = RGB2HS(red, green, blue)
+    sendEvent(name: "hue", value: hs.hue as Integer)
+    sendEvent(name: "saturation", value: hs.saturation as Integer)
     
     return
 }
