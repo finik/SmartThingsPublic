@@ -24,10 +24,6 @@ metadata {
         capability "Refresh"
     }
 
-    // simulator metadata
-    simulator {
-    }
-
     // UI tile definitions
     tiles(scale:2) {
        multiAttributeTile(name:"switch", type: "lighting", width: 6, height: 4, canChangeIcon: true){
@@ -55,9 +51,6 @@ metadata {
         main(["switch"])
         details(["switch", "level", "refresh"])
     }
-}
-// Not in use
-def parse(String description) {
 }
 
 def on() {
