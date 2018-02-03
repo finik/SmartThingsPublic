@@ -17,11 +17,11 @@ definition(
     name: "Magic Home Gateway",
     namespace: "finik",
     author: "Dmitry Fink",
-    description: "Magic Home Gateway",
+    description: "Magic Home Gateway, requires node-magichome server",
     category: "SmartThings Labs",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+    iconUrl: "https://raw.githubusercontent.com/finik/SmartThingsPublic/master/smartapps/finik/magic-home-gateway.src/icons/magichome.png",
+    iconX2Url: "https://raw.githubusercontent.com/finik/SmartThingsPublic/master/smartapps/finik/magic-home-gateway.src/icons/magichome@2x.png",
+    iconX3Url: "https://raw.githubusercontent.com/finik/SmartThingsPublic/master/smartapps/finik/magic-home-gateway.src/icons/magichome@3x.png")
 
 
 preferences {
