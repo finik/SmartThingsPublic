@@ -67,7 +67,7 @@ def initialize() {
     testAndAddChildDevice("Insteon Switch", "14A346", "Top Hallway")
     
     testAndAddChildDevice("Insteon Switch", "147872", "Stairs")
-    testAndAddChildDevice("Insteon Switch", "16A1AA", "Lower Office")
+    testAndAddChildDevice("Insteon Switch", "16A1AA", "Loft")
     testAndAddChildDevice("Insteon Switch", "11DFB7", "Dining Area")
     testAndAddChildDevice("Insteon Switch", "12C37E", "Hallway")
     testAndAddChildDevice("Insteon Switch", "124F5D", "Kitchen")
@@ -76,10 +76,13 @@ def initialize() {
     
     testAndAddChildDevice("Insteon Switch", "141EFB", "Plug1")
     testAndAddChildDevice("Insteon Switch", "141E5D", "Plug2")
+    
+    def children = getChildDevices()
+    children.each { child -> child.initialize() }
 }
 
 void commandCallback(physicalgraph.device.HubResponse hubResponse) {
-    log.debug "commandCallback()..."
+    log.debug "commandCallback(${hubResponse.body})"
     def body = hubResponse.body
     if (body != null) {
     	log.debug "Reply from command: ${body}"
@@ -139,7 +142,6 @@ def getBufferStatus() {
     log.debug "getBufferStatus()"
     def iphex = convertIPtoHex(ip)
     def porthex = convertPortToHex(port)
-    device.deviceNetworkId = "$iphex:$porthex"
 
     def userpassascii = "${username}:${password}"
 	def userpass = "Basic " + userpassascii.encodeAsBase64().toString()
@@ -152,7 +154,7 @@ def getBufferStatus() {
         method: "GET",
         path: "/buffstatus.xml",
         headers: headers
-    ], device.deviceNetworkId,
+    ], "$iphex:$porthex",
     [callback: statusCallback])
 
     sendHubCommand(hubAction)    
